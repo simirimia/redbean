@@ -39,6 +39,17 @@ How we store a book object with RedBeanPHP:
 $book = R::dispense("book");
 $book->author = "Santa Claus";
 $book->title = "Secrets of Christmas";
+/* original: $id = R::store( $book ); */
+$id = \ReadBeanPHP\R::store( $book );
+```
+
+Yep, it's that simple. Still simple, I think, even if you have to add the ReadBeanPHP namespace to the classname. 
+Or just 
+```php
+use \ReadBeanPHP\R;
+$book = R::dispense("book");
+$book->author = "Santa Claus";
+$book->title = "Secrets of Christmas";
 $id = R::store( $book );
 ```
 
