@@ -1,42 +1,26 @@
-RedBeanPHP 4 KickStart
-======================
+RedBeanPHP 4 - simirima fork
+============================
 
-Current Build Status:
-[![Build Status](https://secure.travis-ci.org/gabordemooij/RedBeanPHPKS.png)](http://travis-ci.org/gabordemooij/RedBeanPHPKS)
-
-RedBeanPHP 4 KS is an easy to use ORM tool that stores beans directly in the
-database and creates all tables and columns required on the fly.
-On the other hand it allows plain SQL to search the database. In fact
-RedBeanPHP is some sort of combination between document oriented database
-tools like mongoDB or couchDB and traditional relational database systems
-like MySQL. It offers the best of both worlds: SQL and no-SQL. You work
-with no-SQL if you interact with objects will you simply turn the switch
-and work with SQL if you want to do some typical database tasks like
-searching or quickly grabbing something out of the data store with
-specially crafted SQL. RedBean also has excellent performance because it
-can freeze the database schema which means it no longer scans schemas.
-
-The KickStart Edition of RedBeanPHP is meant for RAD, prototyping and
-offers easy-to-use interfaces and a wonderful works-out-of-the-box
-experience.
-
-If you already know the power of RedBeanPHP and you would like to 
-use RedBeanPHP in a more complex project or integrate RedBeanPHP in an
-existing project you might find the RedBeanPHP 'Adaptive' Edition an
-interesting solution.
+This is a fork of RedBeanPHP, the PHP ORM library created by Gabor de Mooji. The homepage of the original version is <http://readbean.com>.
+The reason for this fork is to add support for composer and to provide a composer package which can be found via <http://packagist.org>.
 
 
-Databases Supported
--------------------
+RedBeanPHP is an easy to use ORM tool for PHP.
 
-RedBeanPHP supports MySQL/InnoDB, MariaDB/InnoDB, PostgreSQL, SQLite3 and CUBRID.
+* Automatically creates tables and columns as you go
+* No configuration, just fire and forget
+* ~~No complicated package tools, no autoloaders, just ONE file~~ 
+This fork uses composer as package tool, comes in multiple files and provides support for the composer autloader. So just
+add this package as a dependency to your composer.json file, include the composer autoload.php file and you are ready to go.
+
 
 Quick Example
 -------------
 
 How we store a book object with RedBeanPHP:
 ```php
-$book = R::dispense("book");
+/* original: $book = R::dispense("book"); */
+$book = \ReadBeanPHP\R::dispense("book");
 $book->author = "Santa Claus";
 $book->title = "Secrets of Christmas";
 /* original: $id = R::store( $book ); */
@@ -53,17 +37,16 @@ $book->title = "Secrets of Christmas";
 $id = R::store( $book );
 ```
 
-Yep, it's that simple.
 
-This Github account is for development only.
-If you want to use RedBeanPHP 4 KickStart please visit the website and
-download the ALL-in-ONE PHAR file. This should work out-of-the-box
-with no configuration at all.
 
 More information
 ----------------
 
 For more information about RedBeanPHP please consult
-the RedBeanPHP online manual at:
+the RedBeanPHP website:
 
 http://www.redbeanphp.com/
+
+
+For questions regarding this fork please contact me: simirimia@triosolutions.at
+
