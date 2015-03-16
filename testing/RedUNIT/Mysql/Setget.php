@@ -45,6 +45,9 @@ class Setget extends Mysql
 		asrt( setget( "-0.25" ), "-0.25" );
 		asrt( setget( -0.25 ), "-0.25" );
 
+		asrt( setget( "1.0" ), "1" );
+		asrt( setget( 1.0 ), "1" );
+
 		asrt( setget( "0.12345678" ), "0.12345678" );
 		asrt( setget( 0.12345678 ), "0.12345678" );
 
@@ -56,6 +59,12 @@ class Setget extends Mysql
 
 		asrt( setget( -2147483647 ), "-2147483647" );
 		asrt( setget( "-2147483647" ), "-2147483647" );
+
+		asrt( setget( -4294967295 ), "-4294967295" );
+		asrt( setget( "-4294967295" ), "-4294967295" );
+
+		asrt( setget( 4294967295 ), "4294967295" );
+		asrt( setget( "4294967295" ), "4294967295" );
 
 		asrt( setget( "2147483648" ), "2147483648" );
 		asrt( setget( "-2147483648" ), "-2147483648" );
