@@ -59,31 +59,6 @@ class DuplicationManager
 	protected $cacheTables = FALSE;
 
 	/**
-	 * Recursively turns the keys of an array into
-	 * camelCase.
-	 *
-	 * @param array   $array       array to camelize
-	 * @param boolean $dolphinMode whether you want the exception for IDs.
-	 *
-	 * @return array
-	 */
-	public function camelfy( $array, $dolphinMode = false ) {
-		$newArray = array();
-		foreach( $array as $key => $element ) {
-			$newKey = preg_replace_callback( '/_(\w)/', function( &$matches ){
-				return strtoupper( $matches[1] );
-			}, $key);
-
-			if ( $dolphinMode ) {
-				$newKey = preg_replace( '/(\w)Id$/', '$1ID', $newKey );
-			}
-
-			$newArray[$newKey] = ( is_array($element) ) ? $this->camelfy( $element, $dolphinMode ) : $element;
-		}
-		return $newArray;
-	}
-
-	/**
 	 * Copies the shared beans in a bean, i.e. all the sharedBean-lists.
 	 *
 	 * @param OODBBean $copy   target bean to copy lists to
@@ -272,6 +247,31 @@ class DuplicationManager
 	}
 
 	/**
+	 * Recursively turns the keys of an array into
+	 * camelCase.
+	 *
+	 * @param array   $array       array to camelize
+	 * @param boolean $dolphinMode whether you want the exception for IDs.
+	 *
+	 * @return array
+	 */
+	public function camelfy( $array, $dolphinMode = false ) {
+		$newArray = array();
+		foreach( $array as $key => $element ) {
+			$newKey = preg_replace_callback( '/_(\w)/', function( &$matches ){
+				return strtoupper( $matches[1] );
+			}, $key);
+
+			if ( $dolphinMode ) {
+				$newKey = preg_replace( '/(\w)Id$/', '$1ID', $newKey );
+			}
+
+			$newArray[$newKey] = ( is_array($element) ) ? $this->camelfy( $element, $dolphinMode ) : $element;
+		}
+		return $newArray;
+	}
+
+	/**
 	 * For better performance you can pass the tables in an array to this method.
 	 * If the tables are available the duplication manager will not query them so
 	 * this might be beneficial for performance.
@@ -393,12 +393,30 @@ class DuplicationManager
 	}
 
 	/**
-	 * Exports a collection of beans. Handy for XML/JSON exports with a
-	 * Javascript framework like Dojo or ExtJS.
-	 * What will be exported:
+	 * Exports a collection of beans recursively.
+	 * This method will export an array of beans in the first argument to a
+	 * set of arrays. This can be used to send JSON or XML representations
+	 * of bean hierarchies to the client.
+	 *
+	 * For every bean in the array this method will export:
+	 *
 	 * - contents of the bean
 	 * - all own bean lists (recursively)
-	 * - all shared beans (not THEIR own lists)
+	 * - all shared beans (but not THEIR own lists)
+	 *
+	 * If the second parameter is set to TRUE the parents of the beans in the
+	 * array will be exported as well (but not THEIR parents).
+	 *
+	 * The third parameter can be used to provide a white-list array
+	 * for filtering. This is an array of strings representing type names,
+	 * only the type names in the filter list will be exported.
+	 *
+	 * The fourth parameter can be used to change the keys of the resulting
+	 * export arrays. The default mode is 'snake case' but this leaves the
+	 * keys as-is, because 'snake' is the default case style used by
+	 * RedBeanPHP in the database. You can set this to 'camel' for
+	 * camel cased keys or 'dolphin' (same as camelcase but id will be
+	 * converted to ID instead of Id).
 	 *
 	 * @param array|OODBBean $beans     beans to be exported
 	 * @param boolean        $parents   also export parents

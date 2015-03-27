@@ -25,7 +25,27 @@ use RedBeanPHP\RedException\SQL as SQLException;
  * with this source code in the file license.txt.
  */
 abstract class AQueryWriter
-{ 
+{
+	/**
+	 * @var array
+	 */
+	private static $sqlFilters = array();
+
+	/**
+	 * @var boolean
+	 */
+	private static $flagSQLFilterSafeMode = false;
+
+	/**
+	 * @var boolean
+	 */
+	private static $flagNarrowFieldMode = true;
+
+	/**
+	 * @var array
+	 */
+	public static $renames = array();
+
 	/**
 	 * @var DBAdapter
 	 */
@@ -52,29 +72,65 @@ abstract class AQueryWriter
 	protected $cache = array();
 
 	/**
-	 * @var array
+	 * @var integer
 	 */
-	public static $renames = array();
-
-	/**
-	 * @var array
-	 */
-	private static $sqlFilters = array();
-
-	/**
-	 * @var boolean
-	 */
-	private static $flagSQLFilterSafeMode = false;
-
-	/**
-	 * @var boolean
-	 */
-	private static $flagNarrowFieldMode = true;
+	protected $maxCacheSizePerType = 20;
 
 	/**
 	 * @var array
 	 */
 	public $typeno_sqltype = array();
+
+	/**
+	 * Checks whether a number can be treated like an int.
+	 *
+	 * @param  string $value string representation of a certain value
+	 *
+	 * @return boolean
+	 */
+	public static function canBeTreatedAsInt( $value )
+	{
+		return (bool) ( strval( $value ) === strval( intval( $value ) ) );
+	}
+
+	/**
+	 * @see QueryWriter::getAssocTableFormat
+	 */
+	public static function getAssocTableFormat( $types )
+	{
+		sort( $types );
+
+		$assoc = implode( '_', $types );
+
+		return ( isset( self::$renames[$assoc] ) ) ? self::$renames[$assoc] : $assoc;
+	}
+
+	/**
+	 * @see QueryWriter::renameAssociation
+	 */
+	public static function renameAssociation( $from, $to = NULL )
+	{
+		if ( is_array( $from ) ) {
+			foreach ( $from as $key => $value ) self::$renames[$key] = $value;
+
+			return;
+		}
+
+		self::$renames[$from] = $to;
+	}
+
+	/**
+	 * Globally available service method for RedBeanPHP.
+	 * Converts a camel cased string to a snake cased string.
+	 *
+	 * @param string $camel a camelCased string
+	 *
+	 * @return string
+	 */
+	public static function camelsSnake( $camel )
+	{
+		return strtolower( preg_replace( '/(?<=[a-z])([A-Z])|([A-Z])(?=[a-z])/', '_$1$2', $camel ) );
+	}
 
 	/**
 	 * Clears renames.
@@ -235,7 +291,12 @@ abstract class AQueryWriter
 	 */
 	private function putResultInCache( $cacheTag, $key, $values )
 	{
-		if (!isset($this->cache[$cacheTag])) $this->cache[$cacheTag] = array();
+		if ( isset( $this->cache[$cacheTag] ) ) {
+			if ( count( $this->cache[$cacheTag] ) > $this->maxCacheSizePerType ) array_shift( $this->cache[$cacheTag] );
+		} else {
+			$this->cache[$cacheTag] = array();
+		}
+
 		$this->cache[$cacheTag][$key] = $values;
 	}
 
@@ -600,57 +661,6 @@ abstract class AQueryWriter
 	}
 
 	/**
-	 * Checks whether a number can be treated like an int.
-	 *
-	 * @param  string $value string representation of a certain value
-	 *
-	 * @return boolean
-	 */
-	public static function canBeTreatedAsInt( $value )
-	{
-		return (bool) ( strval( $value ) === strval( intval( $value ) ) );
-	}
-
-	/**
-	 * @see QueryWriter::getAssocTableFormat
-	 */
-	public static function getAssocTableFormat( $types )
-	{
-		sort( $types );
-
-		$assoc = implode( '_', $types );
-
-		return ( isset( self::$renames[$assoc] ) ) ? self::$renames[$assoc] : $assoc;
-	}
-
-	/**
-	 * @see QueryWriter::renameAssociation
-	 */
-	public static function renameAssociation( $from, $to = NULL )
-	{
-		if ( is_array( $from ) ) {
-			foreach ( $from as $key => $value ) self::$renames[$key] = $value;
-
-			return;
-		}
-
-		self::$renames[$from] = $to;
-	}
-
-	/**
-	 * Globally available service method for RedBeanPHP.
-	 * Converts a camel cased string to a snake cased string.
-	 *
-	 * @param string $camel a camelCased string
-	 *
-	 * @return string
-	 */
-	public static function camelsSnake( $camel )
-	{
-		return strtolower( preg_replace( '/(?<=[a-z])([A-Z])|([A-Z])(?=[a-z])/', '_$1$2', $camel ) );
-	}
-
-	/**
 	 * Checks whether the specified type (i.e. table) already exists in the database.
 	 * Not part of the Object Database interface!
 	 *
@@ -700,10 +710,10 @@ abstract class AQueryWriter
 	/**
 	 * @see QueryWriter::glueLimitOne
 	 */
-	 public function glueLimitOne( $sql = '')
-	 {
-		 return ( strpos( $sql, 'LIMIT' ) === FALSE ) ? ( $sql . ' LIMIT 1 ' ) : $sql;
-	 }
+	public function glueLimitOne( $sql = '')
+	{
+		return ( strpos( $sql, 'LIMIT' ) === FALSE ) ? ( $sql . ' LIMIT 1 ' ) : $sql;
+	}
 
 	/**
 	 * @see QueryWriter::esc
@@ -1107,12 +1117,19 @@ abstract class AQueryWriter
 
 	/**
 	 * Flushes the Query Writer Cache.
+	 * Clears the internal query cache array and returns its overall
+	 * size.
 	 *
-	 * @return void
+	 * @return integer
 	 */
-	public function flushCache()
+	public function flushCache( $newMaxCacheSizePerType = NULL )
 	{
+		if ( !is_null( $newMaxCacheSizePerType ) && $newMaxCacheSizePerType > 0 ) {
+			$this->maxCacheSizePerType = $newMaxCacheSizePerType;
+		}
+		$count = count( $this->cache, COUNT_RECURSIVE );
 		$this->cache = array();
+		return $count;
 	}
 
 	/**

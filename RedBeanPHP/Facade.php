@@ -52,11 +52,6 @@ class Facade
 	const C_REDBEANPHP_VERSION = '4.2';
 
 	/**
-	 * @var array
-	 */
-	public static $toolboxes = array();
-
-	/**
 	 * @var ToolBox
 	 */
 	public static $toolbox;
@@ -102,11 +97,6 @@ class Facade
 	private static $finder;
 
 	/**
-	 * @var string
-	 */
-	public static $currentDB = '';
-
-	/**
 	 * @var Logger
 	 */
 	private static $logger;
@@ -117,6 +107,11 @@ class Facade
 	private static $plugins = array();
 
 	/**
+	 * @var string
+	 */
+	private static $exportCaseStyle = 'default';
+	
+	/**
 	 * Not in use (backward compatibility SQLHelper)
 	 */
 	public static $f;
@@ -124,7 +119,12 @@ class Facade
 	/**
 	 * @var string
 	 */
-	private static $exportCaseStyle = 'default';
+	public static $currentDB = '';
+
+	/**
+	 * @var array
+	 */
+	public static $toolboxes = array();
 
 	/**
 	 * Internal Query function, executes the desired query. Used by
@@ -742,6 +742,25 @@ class Facade
 	public static function findCollection( $type, $sql = NULL, $bindings = array() )
 	{
 		return self::$finder->findCollection( $type, $sql, $bindings );
+	}
+
+	/**
+	 * Finds multiple types of beans at once and offers additional
+	 * remapping functionality. This is a very powerful yet complex function.
+	 * For details see Finder::findMulti().
+	 *
+	 * @see Finder::findMulti()
+	 *
+	 * @param array|string $types      a list of bean types to find
+	 * @param string|array $sqlOrArr   SQL query string or result set array
+	 * @param array        $bindings   SQL bindings
+	 * @param array        $remappings An array of remapping arrays containing closures
+	 *
+	 * @return array
+	 */
+	public static function findMulti( $types, $sql, $bindings = array(), $remappings = array() )
+	{
+		return self::$finder->findMulti( $types, $sql, $bindings, $remappings );
 	}
 
 	/**
