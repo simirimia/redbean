@@ -5,6 +5,7 @@ namespace RedBeanPHP\Driver;
 use RedBeanPHP\Driver as Driver;
 use RedBeanPHP\Logger as Logger;
 use RedBeanPHP\QueryWriter\AQueryWriter as AQueryWriter;
+use RedBeanPHP\RedException as RedException;
 use RedBeanPHP\RedException\SQL as SQL;
 use RedBeanPHP\Logger\RDefault as RDefault;
 use RedBeanPHP\PDOCompatible as PDOCompatible;
@@ -102,19 +103,19 @@ class RPDO implements Driver
 		foreach ( $bindings as $key => &$value ) {
 			if ( is_integer( $key ) ) {
 				if ( is_null( $value ) ) {
-					$statement->bindValue( $key + 1, NULL,\PDO::PARAM_NULL );
+					$statement->bindValue( $key + 1, NULL, \PDO::PARAM_NULL );
 				} elseif ( !$this->flagUseStringOnlyBinding && AQueryWriter::canBeTreatedAsInt( $value ) && abs( $value ) <= $this->max ) {
-					$statement->bindParam( $key + 1, $value,\PDO::PARAM_INT );
+					$statement->bindParam( $key + 1, $value, \PDO::PARAM_INT );
 				} else {
-					$statement->bindParam( $key + 1, $value,\PDO::PARAM_STR );
+					$statement->bindParam( $key + 1, $value, \PDO::PARAM_STR );
 				}
 			} else {
 				if ( is_null( $value ) ) {
-					$statement->bindValue( $key, NULL,\PDO::PARAM_NULL );
+					$statement->bindValue( $key, NULL, \PDO::PARAM_NULL );
 				} elseif ( !$this->flagUseStringOnlyBinding && AQueryWriter::canBeTreatedAsInt( $value ) && abs( $value ) <= $this->max ) {
-					$statement->bindParam( $key, $value,\PDO::PARAM_INT );
+					$statement->bindParam( $key, $value, \PDO::PARAM_INT );
 				} else {
-					$statement->bindParam( $key, $value,\PDO::PARAM_STR );
+					$statement->bindParam( $key, $value, \PDO::PARAM_STR );
 				}
 			}
 		}
@@ -137,36 +138,26 @@ class RPDO implements Driver
 	protected function runQuery( $sql, $bindings, $options = array() )
 	{
 		$this->connect();
-
 		if ( $this->loggingEnabled && $this->logger ) {
 			$this->logger->log( $sql, $bindings );
 		}
-
 		try {
 			if ( strpos( 'pgsql', $this->dsn ) === 0 ) {
-				$statement = $this->pdo->prepare( $sql, array(\PDO::PGSQL_ATTR_DISABLE_NATIVE_PREPARED_STATEMENT => TRUE ) );
+				$statement = $this->pdo->prepare( $sql, array( \PDO::PGSQL_ATTR_DISABLE_NATIVE_PREPARED_STATEMENT => TRUE ) );
 			} else {
 				$statement = $this->pdo->prepare( $sql );
 			}
-
 			$this->bindParams( $statement, $bindings );
-
 			$statement->execute();
 			$this->queryCounter ++;
-
 			$this->affectedRows = $statement->rowCount();
-
 			if ( $statement->columnCount() ) {
-
 				$fetchStyle = ( isset( $options['fetchStyle'] ) ) ? $options['fetchStyle'] : NULL;
-
 				if ( isset( $options['noFetch'] ) && $options['noFetch'] ) {
 					$this->resultArray = array();
 					return $statement;
 				}
-
 				$this->resultArray = $statement->fetchAll( $fetchStyle );
-
 				if ( $this->loggingEnabled && $this->logger ) {
 					$this->logger->log( 'resultset: ' . count( $this->resultArray ) . ' rows' );
 				}
@@ -177,12 +168,9 @@ class RPDO implements Driver
 			//Unfortunately the code field is supposed to be int by default (php)
 			//So we need a property to convey the SQL State code.
 			$err = $e->getMessage();
-
 			if ( $this->loggingEnabled && $this->logger ) $this->logger->log( 'An error occurred: ' . $err );
-
 			$exception = new SQL( $err, 0 );
 			$exception->setSQLState( $e->getCode() );
-
 			throw $exception;
 		}
 	}
@@ -197,7 +185,6 @@ class RPDO implements Driver
 	{
 		$driver = $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME );
 		$version = floatval( $this->pdo->getAttribute(\PDO::ATTR_SERVER_VERSION ) );
-
 		if ($driver === 'mysql') {
 			$encoding = ($version >= 5.5) ? 'utf8mb4' : 'utf8';
 			$this->pdo->setAttribute(\PDO::MYSQL_ATTR_INIT_COMMAND, 'SET NAMES '.$encoding ); //on every re-connect
@@ -223,23 +210,19 @@ class RPDO implements Driver
 	{
 		if ( is_object( $dsn ) ) {
 			$this->pdo = $dsn;
-
 			$this->isConnected = TRUE;
-
 			$this->setEncoding();
 			$this->pdo->setAttribute(\PDO::ATTR_ERRMODE,\PDO::ERRMODE_EXCEPTION );
 			$this->pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE,\PDO::FETCH_ASSOC );
-
 			// make sure that the dsn at least contains the type
 			$this->dsn = $this->getDatabaseType();
 		} else {
 			$this->dsn = $dsn;
-
 			$this->connectInfo = array( 'pass' => $pass, 'user' => $user );
 		}
-		
+
 		//PHP 5.3 PDO SQLite has a bug with large numbers:
-		if ( ( strpos( $this->dsn, 'sqlite' ) === 0 && PHP_MAJOR_VERSION === 5 && PHP_MINOR_VERSION === 3 ) || $this->dsn === 'test-sqlite-53' ) {
+		if ( ( strpos( $this->dsn, 'sqlite' ) === 0 && PHP_MAJOR_VERSION === 5 && PHP_MINOR_VERSION === 3 ) ||  defined('HHVM_VERSION') || $this->dsn === 'test-sqlite-53' ) {
 			$this->max = 2147483647; //otherwise you get -2147483648 ?! demonstrated in build #603 on Travis.
 		} elseif ( strpos( $this->dsn, 'cubrid' ) === 0 ) {
 			$this->max = 2147483647; //bindParam in pdo_cubrid also fails...
@@ -260,6 +243,8 @@ class RPDO implements Driver
 
 	/**
 	 * Whether to bind all parameters as strings.
+	 * If set to TRUE this will cause all integers to be bound as STRINGS.
+	 * This will NOT affect NULL values.
 	 *
 	 * @param boolean $yesNo pass TRUE to bind all parameters as strings.
 	 *
@@ -268,6 +253,26 @@ class RPDO implements Driver
 	public function setUseStringOnlyBinding( $yesNo )
 	{
 		$this->flagUseStringOnlyBinding = (boolean) $yesNo;
+	}
+
+	/**
+	 * Sets the maximum value to be bound as integer, normally
+	 * this value equals PHP's MAX INT constant, however sometimes
+	 * PDO driver bindings cannot bind large integers as integers.
+	 * This method allows you to manually set the max integer binding
+	 * value to manage portability/compatibility issues among different
+	 * PHP builds. This method will return the old value.
+	 *
+	 * @param integer $max maximum value for integer bindings
+	 *
+	 * @return integer
+	 */
+	public function setMaxIntBind( $max )
+	{
+		if ( !is_integer( $max ) ) throw new RedException( 'Parameter has to be integer.' );
+		$oldMax = $this->max;
+		$this->max = $max;
+		return $oldMax;
 	}
 
 	/**
@@ -287,26 +292,21 @@ class RPDO implements Driver
 		try {
 			$user = $this->connectInfo['user'];
 			$pass = $this->connectInfo['pass'];
-
-			$this->pdo = new\PDO(
+			$this->pdo = new \PDO(
 				$this->dsn,
 				$user,
 				$pass
 			);
-
 			$this->setEncoding();
-			$this->pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, TRUE );
+			$this->pdo->setAttribute( \PDO::ATTR_STRINGIFY_FETCHES, TRUE );
 			//cant pass these as argument to constructor, CUBRID driver does not understand...
-			$this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-			$this->pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE,\PDO::FETCH_ASSOC);
-
+			$this->pdo->setAttribute( \PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION );
+			$this->pdo->setAttribute( \PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC );
 			$this->isConnected = TRUE;
-		} catch (\PDOException $exception ) {
+		} catch ( \PDOException $exception ) {
 			$matches = array();
-
 			$dbname  = ( preg_match( '/dbname=(\w+)/', $this->dsn, $matches ) ) ? $matches[1] : '?';
-
-			throw new\PDOException( 'Could not connect to database (' . $dbname . ').', $exception->getCode() );
+			throw new \PDOException( 'Could not connect to database (' . $dbname . ').', $exception->getCode() );
 		}
 	}
 
@@ -331,7 +331,6 @@ class RPDO implements Driver
 	public function GetAll( $sql, $bindings = array() )
 	{
 		$this->runQuery( $sql, $bindings );
-
 		return $this->resultArray;
 	}
 
@@ -344,7 +343,6 @@ class RPDO implements Driver
 				'fetchStyle' => \PDO::FETCH_ASSOC
 			)
 		);
-
 		return $this->resultArray;
 	}
 
@@ -354,7 +352,6 @@ class RPDO implements Driver
 	public function GetCol( $sql, $bindings = array() )
 	{
 		$rows = $this->GetAll( $sql, $bindings );
-
 		$cols = array();
 		if ( $rows && is_array( $rows ) && count( $rows ) > 0 ) {
 			foreach ( $rows as $row ) {
@@ -401,7 +398,6 @@ class RPDO implements Driver
 	public function GetRow( $sql, $bindings = array() )
 	{
 		$arr = $this->GetAll( $sql, $bindings );
-
 		return array_shift( $arr );
 	}
 
@@ -411,7 +407,6 @@ class RPDO implements Driver
 	public function Execute( $sql, $bindings = array() )
 	{
 		$this->runQuery( $sql, $bindings );
-
 		return $this->affectedRows;
 	}
 
@@ -441,7 +436,6 @@ class RPDO implements Driver
 	public function Affected_Rows()
 	{
 		$this->connect();
-
 		return (int) $this->affectedRows;
 	}
 
@@ -458,13 +452,10 @@ class RPDO implements Driver
 	public function setDebugMode( $tf, $logger = NULL )
 	{
 		$this->connect();
-
 		$this->loggingEnabled = (bool) $tf;
-
 		if ( $this->loggingEnabled and !$logger ) {
 			$logger = new RDefault();
 		}
-
 		$this->setLogger( $logger );
 	}
 
@@ -498,7 +489,6 @@ class RPDO implements Driver
 	public function StartTrans()
 	{
 		$this->connect();
-
 		$this->pdo->beginTransaction();
 	}
 
@@ -508,7 +498,6 @@ class RPDO implements Driver
 	public function CommitTrans()
 	{
 		$this->connect();
-
 		$this->pdo->commit();
 	}
 
@@ -518,7 +507,6 @@ class RPDO implements Driver
 	public function FailTrans()
 	{
 		$this->connect();
-
 		$this->pdo->rollback();
 	}
 
@@ -544,7 +532,6 @@ class RPDO implements Driver
 	public function getDatabaseVersion()
 	{
 		$this->connect();
-
 		return $this->pdo->getAttribute(\PDO::ATTR_CLIENT_VERSION );
 	}
 
@@ -556,7 +543,6 @@ class RPDO implements Driver
 	public function getPDO()
 	{
 		$this->connect();
-
 		return $this->pdo;
 	}
 

@@ -6,8 +6,10 @@ use RedUNIT\Base as Base;
 use RedBeanPHP\Facade as R;
 use RedBeanPHP\QueryWriter\SQLiteT as SQLiteT;
 use RedBeanPHP\OODB as OODB;
+use RedBeanPHP\OODBBean as OODBBean;
 use RedBeanPHP\ToolBox as ToolBox;
 use RedBeanPHP\AssociationManager as AssociationManager;
+use RedBeanPHP\RedException as RedException;
 use RedBeanPHP\RedException\SQL as SQL;
 use RedBeanPHP\QueryWriter\MySQL as MySQL;
 use RedBeanPHP\QueryWriter\PostgreSQL as PostgreSQL;
@@ -34,6 +36,81 @@ class Database extends Base
 	public function getTargetDrivers()
 	{
 		return array( 'mysql', 'pgsql', 'sqlite', 'CUBRID' );
+	}
+
+	/**
+	 * Test setter maximum integer bindings.
+	 *
+	 * @return void
+	 */
+	public function testSetMaxBind()
+	{
+		$driver = R::getDatabaseAdapter()->getDatabase();
+		$old = $driver->setMaxIntBind( 10 );
+		//use SQLite to confirm...
+		if ( $this->currentlyActiveDriverID === 'sqlite' ) {
+			$type = R::getCell( 'SELECT typeof( ? ) ', array( 11 ) );
+			asrt( $type, 'text' );
+			$type = R::getCell( 'SELECT typeof( ? ) ', array( 10 ) );
+			asrt( $type, 'integer' );
+			$type = R::getCell( 'SELECT typeof( ? ) ', array( 9 ) );
+			asrt( $type, 'integer' );
+		}
+		$new = $driver->setMaxIntBind( $old );
+		asrt( $new, 10 );
+		try {
+			$driver->setMaxIntBind( '10' );
+			fail();
+		} catch( RedException $e ) {
+			pass();
+		}
+		$new = $driver->setMaxIntBind( $old );
+		asrt( $new, $old );
+		$new = $driver->setMaxIntBind( $old );
+		asrt( $new, $old );
+	}
+
+	/**
+	 * Can we use colons in SQL?
+	 *
+	 * @return void
+	 */
+	public function testColonsInSQL()
+	{
+		R::nuke();
+		$book = R::dispense( 'book' );
+		$book->title = 'About :';
+		R::store( $book );
+		pass();
+		$book = R::findOne( 'book', ' title LIKE :this ', array(
+			':this' => 'About :'
+		) );
+		asrt( ( $book instanceof OODBBean ), TRUE );
+		//without the colon?
+		$book = R::findOne( 'book', ' title LIKE :this ', array(
+			'this' => 'About :'
+		) );
+		asrt( ( $book instanceof OODBBean ), TRUE );
+		$book = R::findOne( 'book', ' title LIKE :this ', array(
+			':this' => '%:%'
+		) );
+		asrt( ( $book instanceof OODBBean ), TRUE );
+		$book = R::findOne( 'book', ' title LIKE :this OR title LIKE :that', array(
+			'this' => '%:%', ':that' => 'That'
+		) );
+		asrt( ( $book instanceof OODBBean ), TRUE );
+		$records = R::getAll('SELECT * FROM book WHERE title LIKE :this', array( ':this' => 'About :' ) );
+		asrt( count( $records ), 1 );
+		$records = R::getAll('SELECT * FROM book WHERE title LIKE :this', array( 'this' => 'About :' ) );
+		asrt( count( $records ), 1 );
+		$records = R::getAll('SELECT * FROM book WHERE title LIKE :this OR title LIKE :that', array( ':this' => 'About :', ':that' => 'That' ) );
+		asrt( count( $records ), 1 );
+		$records = R::getRow('SELECT * FROM book WHERE title LIKE :this', array( ':this' => 'About :' ) );
+		asrt( count( $records ), 2 );
+		$records = R::getRow('SELECT * FROM book WHERE title LIKE :this', array( 'this' => 'About :' ) );
+		asrt( count( $records ), 2 );
+		$records = R::getRow('SELECT * FROM book WHERE title LIKE :this OR title LIKE :that', array( ':this' => 'About :', ':that' => 'That' ) );
+		asrt( count( $records ), 2 );
 	}
 
 	/**
