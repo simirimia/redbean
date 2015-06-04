@@ -198,21 +198,22 @@ class Facade
 	 * RedBean. The Setup() method can be called without any arguments, in this case it will
 	 * try to create a SQLite database in /tmp called red.db (this only works on UNIX-like systems).
 	 *
-	 * @param string  $dsn      Database connection string
-	 * @param string  $username Username for database
-	 * @param string  $password Password for database
-	 * @param boolean $frozen   TRUE if you want to setup in frozen mode
+	 * @param string  $dsn         Database connection string
+	 * @param string  $username    Username for database
+	 * @param string  $password    Password for database
+	 * @param boolean $frozen      TRUE if you want to setup in frozen mode
+     * @param string  $databaseKey Internal key to identify database setup
 	 *
 	 * @return ToolBox
 	 */
-	public static function setup( $dsn = NULL, $username = NULL, $password = NULL, $frozen = FALSE )
+	public static function setup( $dsn = NULL, $username = NULL, $password = NULL, $frozen = FALSE, $databaseKey='default' )
 	{
 		if ( is_null( $dsn ) ) {
 			$dsn = 'sqlite:/' . sys_get_temp_dir() . '/red.db';
 		}
 
-		self::addDatabase( 'default', $dsn, $username, $password, $frozen );
-		self::selectDatabase( 'default' );
+		self::addDatabase( $databaseKey, $dsn, $username, $password, $frozen );
+		self::selectDatabase( $databaseKey );
 
 		return self::$toolbox;
 	}
