@@ -1,19 +1,9 @@
-RedBeanPHP 4
-============
+THIS REPOSITORY IS DEPRECATED
+=============================
 
-![Build Status](https://travis-ci.org/gabordemooij/redbean.svg?branch=master)
+The whole point of it was to have a composer-enabled version of RedBeanPHP. In the meantime Gabor accepted the neccessary changes in the main repository and so there is no need for a separate fork anymore.
 
-RedBeanPHP is an easy to use ORM tool for PHP.
-
-* Automatically creates tables and columns as you go
-* No configuration, just fire and forget
-* No complicated package tools, no autoloaders, just ONE file
-
-Installation via Composer
--------------------------
-
-Just open your composer.json file and add the package name ```(e.g. "gabordemooij/redbean": "dev-master")``` in your require list.
-
+Please change your composer.josn files to use the main repository (which is https://github.com/gabordemooij/redbean):
 ```json
 {
     "require": {
@@ -21,23 +11,6 @@ Just open your composer.json file and add the package name ```(e.g. "gabordemooi
     }
 }
 ```
-
-If you not using composer then [try it.](http://redbeanphp.com/install)
-
-
-Quick Example
--------------
-
-How we store a book object with RedBeanPHP:
-```php
-$book = R::dispense("book");
-$book->author = "Santa Claus";
-$book->title = "Secrets of Christmas";
-$id = R::store( $book );
-```
-
-Yep, it's that simple.
-
 
 More information
 ----------------
